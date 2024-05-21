@@ -693,25 +693,21 @@ class GaussianDiffusion(Module):
 
         for t in tqdm(reversed(range(0, self.num_timesteps)), desc = 'sampling loop time step', total = self.num_timesteps):
             self_cond = x_start if self.self_condition else None
-            img, x_start = self.p_sample(img, t, self_cond)
+            # img, x_start = self.p_sample(img, t, self_cond)
+            img, x_start = self.p_sample(x=img, t=t, x_self_cond=self_cond, gt=gt, mask=mask)
             imgs.append(img)
 
-        if resample is True and t == 0:
-            #Jump back for resample_jump timesteps and resample_iter times
-
-            for iter in tqdm(range(resample_iter), desc = 'resample loop', total = resample_iter):
-                t = resample_jump
-
-                beta = self.betas[t]
-                img = torch.sqrt(1 - beta) * img + torch.sqrt(beta) * torch.randn_like(img)
-                for j in reversed(range(0, resample_jump)):
-                    img, x_start = self.p_sample(img, t,gt,mask)
-            imgs.append(img)
-        
-
+            if resample is True and (t % 50 == 0):
+                #Jump back for resample_jump timesteps and resample_iter times
+                for iter in tqdm(range(resample_iter), desc = 'resample loop', total = resample_iter):
+                    t = resample_jump
+                    beta = self.betas[t]
+                    img = torch.sqrt(1 - beta) * img + torch.sqrt(beta) * torch.randn_like(img)
+                    for j in reversed(range(0, resample_jump)):
+                        img, x_start = self.p_sample(x=img, t=t, gt=gt, mask=mask)
+                imgs.append(img)
 
         ret = img if not return_all_timesteps else torch.stack(imgs, dim = 1)
-
         ret = self.unnormalize(ret)
         return ret
 
